@@ -3,10 +3,11 @@ import streamlit as st
 import pandas as pd
 from predict_risk import predict_risk
 from risk_explanation import explain_risk
+from alert_system import create_alerts
 
 st.set_page_config(page_title="MineGuard AI", layout="wide")
 df = pd.read_csv("mine_safety_dataset.csv")
-
+alert_df = create_alerts()
 
 # Professional Dashboard Header
 st.markdown("""
@@ -201,27 +202,55 @@ st.dataframe(
 )
 
 # High-Risk Alerts
-st.subheader("Mine Safety Alerts")
+# Mine Safety Alerts
+st.subheader("🚨 Mine Safety Alerts")
 
-high_risk = zone_data[
-    zone_data["risk_level"] == "High"
+zone_alerts = alert_df[
+    alert_df["zone"] == selected_zone
 ]
 
-if not high_risk.empty:
+active_alerts = zone_alerts[
+    zone_alerts["alert_status"] == "Alert"
+]
+
+if not active_alerts.empty:
+
     st.error(
-        f"WARNING: {selected_zone} has "
-        f"{len(high_risk)} high-risk records!"
+        f"⚠️ {len(active_alerts)} active alert record(s) found in {selected_zone}"
     )
 
-    st.dataframe(
-        high_risk[
-            ["zone", "methane", "co",
-             "temperature", "risk_level"]
-        ]
+    # Get unique alert messages
+    alert_messages = (
+        active_alerts["alert_message"]
+        .dropna()
+        .str.split("; ")
+        .explode()
+        .drop_duplicates()
     )
+
+    # Get unique recommended actions
+    recommended_actions = (
+        active_alerts["recommended_action"]
+        .dropna()
+        .str.split("; ")
+        .explode()
+        .drop_duplicates()
+    )
+
+    st.markdown("### 🚨 Alert Types")
+
+    for message in alert_messages:
+        st.warning(f"🚨 {message}")
+
+    st.markdown("### ✅ Recommended Actions")
+
+    for action in recommended_actions:
+        st.info(f"✅ {action}")
+
 else:
+
     st.success(
-        f"No high-risk records found for {selected_zone}."
+        f"✅ No active safety alerts found for {selected_zone}."
     )
     
 # Ventilation Monitoring
